@@ -35,7 +35,7 @@ void BoundaryMap::rebuild(const std::unordered_map<Voxel, State, VoxelHash>& vox
     if (state != State::Occupied) {
       for (const auto& d : kNeighbors) {
         State neighbor = lookup(voxels, {v.x+d.x,v.y+d.y,v.z+d.z});
-        if (state == State::Free && neighbor == State::Unknown) keep = true;
+        // A free voxel next to an occupied cell must also be retained: otherwise\n        // a vertical FREE run can disappear between occupied and unknown entries.\n        if (state == State::Free && neighbor != State::Free) keep = true;
         if (state == State::Unknown && neighbor == State::Free) keep = true;
       }
     }
