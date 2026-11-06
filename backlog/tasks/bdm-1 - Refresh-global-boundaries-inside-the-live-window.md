@@ -1,11 +1,11 @@
 ---
 id: BDM-1
 title: Refresh global boundaries inside the live window
-status: In Review
+status: Done
 assignee:
   - '@zhongli'
 created_date: '2026-11-06T09:45:00Z'
-updated_date: '2026-11-06T10:09:00Z'
+updated_date: '2026-11-06T10:12:00Z'
 labels: []
 dependencies: []
 references:
