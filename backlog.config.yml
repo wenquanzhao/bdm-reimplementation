@@ -1,0 +1,19 @@
+project_name: "bdm-reimplementation"
+default_status: "To Do"
+statuses: ["To Do", "Ready", "In Progress", "In Review", "Needs Human", "Done"]
+definition_of_done:
+  - "From the repo root: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j && ctest --test-dir build --output-on-failure"
+  - "Docs that describe the changed behavior (README.md or docs/) match the code"
+labels: []
+date_format: yyyy-mm-dd
+max_column_width: 20
+auto_open_browser: true
+default_port: 6420
+remote_operations: false
+auto_commit: false
+filesystem_only: false
+bypass_git_hooks: false
+check_active_branches: false
+active_branch_days: 30
+task_prefix: "BDM"
+backlog_directory: "backlog"
