@@ -15,6 +15,11 @@
 
 The average `O(1)` claim is a theorem about binary search over a whole map. It is not a separate lookup and is not benchmarked here.
 
+## KITTI static occupancy hook
+- [x] Load odometry velodyne bins, `calib.txt` `Tr`, and `poses/<seq>.txt`.
+- [x] Accumulate a dense Free/Occupied/Unknown grid with a documented hit/miss ray cast (not Section 7 log-odds).
+- [x] `BoundaryMap::rebuild` plus `z+`/`z-` queries compared with that grid. The CI fixture does not download KITTI. See `docs/KITTI_PIPELINE.md`.
+
 ## v0.3: incremental mapping
 - [ ] Probabilistic local occupancy grid and ray casting.
 - [ ] Sliding local map; global-local boundary merge.

@@ -124,3 +124,7 @@ The v0.1 static core, after this fix, does what it claims for a **z-projected** 
 - on every scene in `tests/test_boundary_map.cpp`, both directions match the dense grid, and a free region actually produces interior-free entries.
 
 That is the static representation and the static query. It is not a reproduction of the IJRR system. Still absent: the paper's hash and packed entry layout, projection axes other than `z`, any measured average-`O(1)` timing, probabilistic ray casting, the sliding local map, incremental updates, ROS 2, and the Sections 8–9 experiments. Nothing here should be read as matching the paper's memory, speed, or accuracy figures.
+
+## KITTI
+
+`docs/KITTI_PIPELINE.md` is a later step: load KITTI odometry scans into a dense grid and compare `rebuild` / `query` with that grid. The comparison checks this static map. It is not a Section 8 result, and the grid is not the Section 7 log-odds model.
