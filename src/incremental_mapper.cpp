@@ -213,6 +213,51 @@ std::size_t IncrementalMapper::fuseSlideIn(Voxel old_origin, Voxel new_origin) {
   return fused;
 }
 
+void IncrementalMapper::refreshLiveBoundaries(
+    const std::unordered_set<Voxel, VoxelHash>& changed_now) {
+  if (!local_.placed() || changed_now.empty()) return;
+
+  // Changed voxel plus its 6-neighbors. A neighbor one cell outside the window
+  // can flip between interior-free, exterior-unknown, and absent.
+  std::unordered_set<Voxel, VoxelHash> update_set;
+  for (const Voxel& voxel : changed_now) {
+    if (!local_.contains(voxel)) continue;
+    update_set.insert(voxel);
+    for (const Voxel& delta : kNeighbors) {
+      Voxel neighbor{};
+      if (shift(voxel, delta, neighbor)) update_set.insert(neighbor);
+    }
+  }
+  if (update_set.empty()) return;
+
+  // Snapshot the update set and one further ring before any write. The outer
+  // ring is classification context, same as slideTo, and is not stored itself.
+  const Voxel origin = local_.origin();
+  std::unordered_map<Voxel, State, VoxelHash> snapshot;
+  auto remember = [&](Voxel voxel) {
+    if (snapshot.find(voxel) != snapshot.end()) return;
+    const State state =
+        local_.contains(voxel) ? local_.occupancy(voxel) : queryGlobalAvoiding(voxel, origin);
+    snapshot.emplace(voxel, state);
+  };
+  for (const Voxel& voxel : update_set) {
+    remember(voxel);
+    for (const Voxel& delta : kNeighbors) {
+      Voxel neighbor{};
+      if (shift(voxel, delta, neighbor)) remember(neighbor);
+    }
+  }
+  auto state_of = [&](Voxel voxel) {
+    const auto found = snapshot.find(voxel);
+    return found == snapshot.end() ? State::Unknown : found->second;
+  };
+  for (const Voxel& voxel : update_set) {
+    const std::optional<Boundary> tag = boundaryTag(voxel, state_of);
+    if (tag.has_value()) global_.insertAt(voxel, *tag);
+    else global_.eraseAt(voxel);
+  }
+}
+
 void IncrementalMapper::slideTo(Voxel new_origin, FrameUpdate& update) {
   const Voxel old_origin = local_.origin();
 
@@ -282,7 +327,12 @@ FrameUpdate IncrementalMapper::integrate(const std::vector<std::array<float, 3>>
   if (!local_.placed()) local_.place(centeredOrigin(sensor_voxel));
 
   FrameUpdate update;
-  update.rays = local_.integrate(points_sensor, world_from_sensor, dirty_);
+  // A fresh set: dirty_ already holds every voxel that changed and has not
+  // slid out, so a membership diff would miss a second flip (frame C {2,0,0}).
+  std::unordered_set<Voxel, VoxelHash> changed_now;
+  update.rays = local_.integrate(points_sensor, world_from_sensor, changed_now);
+  dirty_.insert(changed_now.begin(), changed_now.end());
+  refreshLiveBoundaries(changed_now);
   if (distanceFromCenter(sensor_m) > params_.slide_threshold_m) {
     const Voxel next = centeredOrigin(sensor_voxel);
     const Voxel current = local_.origin();

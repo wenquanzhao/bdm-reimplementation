@@ -97,21 +97,6 @@ void expectSorted(const BoundaryMap& map, const char* label) {
   }
 }
 
-bool sameColumns(const BoundaryMap& lhs, const BoundaryMap& rhs) {
-  if (lhs.boundaryCount() != rhs.boundaryCount()) return false;
-  if (lhs.columns().size() != rhs.columns().size()) return false;
-  for (const auto& [column, entries] : lhs.columns()) {
-    const auto it = rhs.columns().find(column);
-    if (it == rhs.columns().end() || it->second.size() != entries.size()) return false;
-    for (std::size_t i = 0; i < entries.size(); ++i) {
-      if (entries[i].z != it->second[i].z || entries[i].boundary != it->second[i].boundary) {
-        return false;
-      }
-    }
-  }
-  return true;
-}
-
 void expectOverlap(const IncrementalMapper& mapper, const char* label) {
   const BoundaryMap merged = mapper.mergedBoundaryMap();
   expectSorted(merged, label);
@@ -334,9 +319,11 @@ void testFreeVolumeRoundTrip() {
 
 void testStreamingSlideAndReentry() {
   // Window 7, threshold 1 m. Pose A centers the window on voxel 0: x in [-3, 4).
-  // Two hits at voxel -3 and one hit at voxel 2. Pose B is far enough to slide
+  // Two hits at voxel -3 and one hit at voxel 2. That scan does not slide, and
+  // the global map records the new discrete states before pose B. Pose B slides
   // so x in [0, 7) after the ray is cast into the old window. Pose C does not
-  // slide. The return to pose A loads the slide-out blob back through equation (11).
+  // slide and clears {2,0,0}; globalMap() follows that flip. The return to pose
+  // A loads the slide-out blob back through equation (11).
   IncrementalMapper sliding(cube(7, 1.0, true));
   IncrementalMapper reference(cube(32, 1.0e9, true));
   const LogOddsModel& model = sliding.local().model();
@@ -345,7 +332,13 @@ void testStreamingSlideAndReentry() {
   const FrameUpdate frame_a = sliding.integrate(scan_a, kPoseA);
   reference.integrate(scan_a, kPoseA);
   if (frame_a.slid || sliding.slideCount() != 0) fail("frame A slid");
-  if (sliding.globalMap().boundaryCount() != 0) fail("frame A wrote the global map");
+  expectSorted(sliding.globalMap(), "frame A global");
+  if (sliding.globalMap().query({-3, 0, 0}) != State::Occupied) {
+    fail("frame A global map does not match the occupied local state");
+  }
+  if (sliding.globalMap().query({-2, 0, 0}) != State::Free) {
+    fail("frame A global map does not match the free local state");
+  }
   expectOdds(sliding, {-3, 0, 0}, 2.0 * model.l_hit(), "frame A occupied odds");
   expectOdds(sliding, {-2, 0, 0}, 2.0 * model.l_miss(), "frame A free odds");
   expectOdds(sliding, {-1, 0, 0}, 2.0 * model.l_miss(), "frame A free odds -1");
@@ -385,16 +378,17 @@ void testStreamingSlideAndReentry() {
   expectOccupancy(sliding, {3, 0, 2}, State::Occupied, "frame B hit");
   expectOverlap(sliding, "frame B");
   expectAgree(sliding, reference, "frame B");
-  const BoundaryMap global_after_slide = sliding.globalMap();
 
+  // {2,0,0} stayed inside the window and was already dirty. The miss flips it
+  // without a slide, so globalMap() must match the new local state now.
   const std::array<double, 12> pose_c = translation(3.6, 0.5, 0.5);
   const FrameUpdate frame_c = sliding.integrate({{-3.1f, 0.f, 0.f}}, pose_c);
   reference.integrate({{-3.1f, 0.f, 0.f}}, pose_c);
   if (frame_c.slid || sliding.slideCount() != 1) fail("frame C should not slide");
-  if (!sameColumns(sliding.globalMap(), global_after_slide)) {
-    fail("a scan that does not slide rewrote the global boundary map");
-  }
   expectOccupancy(sliding, {2, 0, 0}, State::Unknown, "frame C cleared the overlap hit");
+  if (sliding.globalMap().query({2, 0, 0}) != State::Unknown) {
+    fail("frame C global map does not match the unknown local state");
+  }
   expectOverlap(sliding, "frame C");
   expectAgree(sliding, reference, "frame C");
 
@@ -418,25 +412,32 @@ void testStreamingSlideAndReentry() {
     fail("slide-in deleted the global occupied entry");
   }
 
-  // A further miss changes the local cell and leaves the global entry stale
-  // until the cell slides out. Section 7.3 reads the local grid inside the window.
+  // The endpoint is outside the window. The miss still flips {-3,0,0} inside
+  // it. query() reads the local grid, and globalMap() stores ExteriorUnknown
+  // because {-2,0,0} is still free. That write happens before the repair slide.
   const FrameUpdate frame_edit = sliding.integrate({{-4.f, 0.f, 0.f}}, kPoseA);
   if (frame_edit.slid) fail("edit slid");
   if (frame_edit.rays.points_endpoint_outside != 1) fail("edit endpoint should leave the window");
   expectOdds(sliding, {-3, 0, 0}, 0.0, "local hit cleared back to the prior");
   expectOccupancy(sliding, {-3, 0, 0}, State::Unknown, "query follows the local grid");
-  if (sliding.globalMap().query({-3, 0, 0}) != State::Occupied) {
-    fail("global entry should still be the occupied boundary until the next slide");
+  if (sliding.globalMap().query({-3, 0, 0}) != State::Unknown) {
+    fail("frame_edit global query should be unknown before the repair slide");
   }
-  expectOverlap(sliding, "stale global");
+  if (!hasEntry(sliding.globalMap(), {-3, 0, 0}, Boundary::ExteriorUnknown)) {
+    fail("frame_edit should store ExteriorUnknown beside the free neighbor");
+  }
+  expectOverlap(sliding, "frame edit");
 
   const FrameUpdate frame_repair = sliding.integrate({}, translation(2.5, 0.5, 0.5));
   if (!frame_repair.slid || sliding.slideCount() != 3) fail("repair should slide");
+  if (hasEntry(sliding.globalMap(), {-3, 0, 0}, Boundary::Occupied)) {
+    fail("repair slide restored Occupied");
+  }
   if (!hasEntry(sliding.globalMap(), {-3, 0, 0}, Boundary::ExteriorUnknown)) {
-    fail("slide-out did not replace the stale occupied boundary");
+    fail("repair slide dropped the ExteriorUnknown entry written before the slide");
   }
   if (sliding.globalMap().query({-3, 0, 0}) != State::Unknown) {
-    fail("repaired global query");
+    fail("repair slide restored an occupied global query");
   }
   expectOverlap(sliding, "repair");
 }
