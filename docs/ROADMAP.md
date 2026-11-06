@@ -3,14 +3,17 @@
 ## v0.1: static reference representation
 - [x] Sparse 2D hash columns and sorted boundary entries.
 - [x] 6-neighbor interface extraction and explicit occupied cells.
-- [x] Binary-search occupation query.
-- [x] Minimal CTest smoke tests.
-- [ ] Verify exact equivalence to a dense grid on randomized 3D scenes.
-- [ ] Resolve ambiguous FREE/UNKNOWN intervals in complex columns using paper algorithm.
+- [x] Binary-search occupancy query along `z+` and `z-` (Algorithm 1 predicates).
+- [x] CTest coverage, including a dense-grid oracle on small random scenes.
+- [x] Interior-free boundaries at free/unknown and free/occupied faces.
 
-## v0.2: exact paper query
-- [ ] Reimplement the paper's boundary-direction/query predicates and optimized lookup.
-- [ ] Unit tests for holes, touching occupied surfaces, disconnected free regions, negative indices.
+## v0.2: remaining paper-query gaps
+- [x] Boundary-direction predicates for the `z` projection (`z+` and `z-`).
+- [x] Unit tests for holes, touching occupied surfaces, disconnected free regions, negative indices.
+- [ ] Paper hash `(P·x + y) mod Q` (`P = 1441`) and Int32 packing of `(z, type)`. The stored columns are behaviorally the boundary set; the exact layout is not.
+- [ ] Projection axes other than `z`, and search directions `x±` / `y±`.
+
+The average `O(1)` claim is a theorem about binary search over a whole map. It is not a separate lookup and is not benchmarked here.
 
 ## v0.3: incremental mapping
 - [ ] Probabilistic local occupancy grid and ray casting.

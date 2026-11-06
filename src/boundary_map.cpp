@@ -15,6 +15,30 @@ State lookup(const std::unordered_map<Voxel, State, VoxelHash>& grid, Voxel v) {
   auto it = grid.find(v);
   return it == grid.end() ? State::Unknown : it->second;
 }
+
+// First stored boundary with z >= qz (z+), or the last with z <= qz (z-).
+// Section 6.2. A missing column or no such entry is the null nearest boundary.
+const Entry* nearestInDirection(const std::vector<Entry>& entries, int qz,
+                                 SearchDirection direction) {
+  if (entries.empty()) return nullptr;
+  if (direction == SearchDirection::PositiveZ) {
+    auto it = std::lower_bound(entries.begin(), entries.end(), qz,
+        [](const Entry& e, int z) { return e.z < z; });
+    return it == entries.end() ? nullptr : &*it;
+  }
+  auto it = std::upper_bound(entries.begin(), entries.end(), qz,
+      [](int z, const Entry& e) { return z < e.z; });
+  return it == entries.begin() ? nullptr : &*(it - 1);
+}
+
+// Algorithm 1. r_min = |b_nn.z - q.z|; r_min == 0 iff the z coordinates match
+// because the column already shares (x, y) with the query.
+State stateFromNearest(const Entry* nearest, int qz) {
+  if (nearest == nullptr) return State::Unknown;
+  if (nearest->boundary == Boundary::InteriorFree) return State::Free;
+  if (nearest->boundary == Boundary::Occupied && nearest->z == qz) return State::Occupied;
+  return State::Unknown;
+}
 }  // namespace
 std::size_t VoxelHash::operator()(const Voxel& v) const noexcept {
   std::size_t h = 1469598103934665603ULL;
@@ -34,55 +58,48 @@ void BoundaryMap::rebuild(const std::unordered_map<Voxel, State, VoxelHash>& vox
     bool keep = (state == State::Occupied);
     if (state != State::Occupied) {
       for (const auto& d : kNeighbors) {
-        State neighbor = lookup(voxels, {v.x+d.x,v.y+d.y,v.z+d.z});
-        // A free voxel next to an occupied cell must also be retained: otherwise\n        // a vertical FREE run can disappear between occupied and unknown entries.\n        if (state == State::Free && neighbor != State::Free) keep = true;
+        const State neighbor = lookup(voxels, {v.x + d.x, v.y + d.y, v.z + d.z});
+        // Interior free: free, with at least one 6-neighbor unknown or occupied.
+        if (state == State::Free && neighbor != State::Free) keep = true;
+        // Exterior unknown: unknown, and at least one 6-neighbor is free.
         if (state == State::Unknown && neighbor == State::Free) keep = true;
       }
     }
-    if (keep) {
-      const auto tag = state == State::Occupied ? Boundary::Occupied :
-                       state == State::Free ? Boundary::InteriorFree : Boundary::ExteriorUnknown;
-      columns_[{v.x, v.y}].push_back({v.z, tag});
-      ++count_;
-    }
+    if (!keep) continue;
+    const auto tag = state == State::Occupied ? Boundary::Occupied :
+                     state == State::Free ? Boundary::InteriorFree : Boundary::ExteriorUnknown;
+    columns_[{v.x, v.y}].push_back({v.z, tag});
+    ++count_;
   }
-  // Missing unknown voxels also need explicit exterior boundary entries.
-  // Include just the 6-connected halo of known FREE cells.
+  // Unknown cells omitted from the input are still exterior boundaries
+  // when they 6-neighbor a free cell.
   for (const auto& [v, state] : voxels) {
     if (state != State::Free) continue;
     for (const auto& d : kNeighbors) {
-      Voxel n{v.x+d.x,v.y+d.y,v.z+d.z};
+      Voxel n{v.x + d.x, v.y + d.y, v.z + d.z};
       if (lookup(voxels, n) != State::Unknown) continue;
-      if (voxels.find(n) != voxels.end()) continue; // Explicit UNKNOWN handled above.
-      auto& col = columns_[{n.x,n.y}];
-      if (std::none_of(col.begin(), col.end(), [&](const Entry& e){return e.z == n.z;})) {
-        col.push_back({n.z,Boundary::ExteriorUnknown});
+      if (voxels.find(n) != voxels.end()) continue;  // Explicit unknown handled above.
+      auto& col = columns_[{n.x, n.y}];
+      if (std::none_of(col.begin(), col.end(), [&](const Entry& e) { return e.z == n.z; })) {
+        col.push_back({n.z, Boundary::ExteriorUnknown});
         ++count_;
       }
     }
   }
   for (auto& [key, entries] : columns_) {
     (void)key;
-    std::sort(entries.begin(), entries.end(), [](const Entry&a,const Entry&b){return a.z<b.z;});
+    std::sort(entries.begin(), entries.end(), [](const Entry& a, const Entry& b) {
+      return a.z < b.z;
+    });
   }
 }
 State BoundaryMap::query(const Voxel& v) const {
-  auto it = columns_.find({v.x,v.y});
+  return query(v, SearchDirection::PositiveZ);
+}
+State BoundaryMap::query(const Voxel& v, SearchDirection direction) const {
+  auto it = columns_.find({v.x, v.y});
   if (it == columns_.end()) return State::Unknown;
-  const auto& entries = it->second;
-  auto lb = std::lower_bound(entries.begin(), entries.end(), v.z,
-       [](const Entry& e, int z){return e.z < z;});
-  if (lb != entries.end() && lb->z == v.z)
-    return lb->boundary == Boundary::Occupied ? State::Occupied :
-           lb->boundary == Boundary::InteriorFree ? State::Free : State::Unknown;
-  // Interior FREE is inferred only across a matching enclosing pair in the same column.
-  if (lb != entries.begin() && lb != entries.end()) {
-    const auto& below = *(lb - 1);
-    const auto& above = *lb;
-    if (below.boundary == Boundary::InteriorFree && above.boundary == Boundary::InteriorFree)
-      return State::Free;
-  }
-  return State::Unknown;
+  return stateFromNearest(nearestInDirection(it->second, v.z, direction), v.z);
 }
 std::size_t BoundaryMap::boundaryCount() const noexcept { return count_; }
 }  // namespace bdm
