@@ -63,7 +63,7 @@ On a boundary set that matches Section 4, the paper's theorem says either direct
 | Search directions `x±` and `y±`, which need a different projection axis. | Not implemented. The map is projected on `z` only. |
 | Theorem for `r_min > 0`: nearest interior boundary ⇒ free; nearest exterior boundary ⇒ unknown. Null search ⇒ unknown. | Behavior follows from Algorithm 1. Not a separate proof artifact. |
 | Average query `O(1)` over a whole map (the binary search cost averaged over cells). | Not measured. One column query here is a hash lookup plus `O(log k)`. |
-| Section 7. Local log-odds grid, ray casting, sliding window, incremental boundary update, region query. | Skeleton in `IncrementalMapper`. Log-odds ray casting, a fixed rolling window, slide-out boundary edits, and slide-in fusion are implemented. See `docs/INCREMENTAL.md` for the gaps (no other projection axis, no packed hash, global entries inside the window can lag until the next slide). |
+| Section 7. Local log-odds grid, ray casting, sliding window, incremental boundary update, region query. | Skeleton in `IncrementalMapper`. Log-odds ray casting, a fixed rolling window, a live-window boundary refresh when a voxel changes discrete state, slide-out boundary edits, and slide-in fusion are implemented. See `docs/INCREMENTAL.md` for the gaps (no other projection axis, no packed hash). |
 | Sections 8–9. Benchmarks and real-world flights. | Not run. No claim of matching those memory, timing, or accuracy figures. |
 
 ## What the tests cover
@@ -143,6 +143,6 @@ ctest --test-dir build --output-on-failure
 
 The same sources with `-Wall -Wextra -Wpedantic -Werror -fsanitize=address,undefined` also passed those 8 tests. No ASan or UBSan report was printed.
 
-`incremental_map` streams synthetic scans, slides the window, and checks the overlap of `mergedBoundaryMap` against the local grid in both `z` directions. It also checks slid-out cells against a second mapper whose window never slides, including an enclosed free cell that is not stored as a boundary, and the equation (11) re-entry that replaces accumulated log-odds with the free or occupied threshold. `incremental_synthetic` requires a slide that actually inserts global boundaries. `incremental_kitti_mini` streams the two-frame fixture; at a 16³ window the slide-out slab is still prior-unknown, so the global map stays empty and the check is the overlap only.
+`incremental_map` streams synthetic scans, writes a discrete state change into `globalMap()` before the next slide, slides the window, and checks the overlap of `mergedBoundaryMap` against the local grid in both `z` directions. It also checks slid-out cells against a second mapper whose window never slides, including an enclosed free cell that is not stored as a boundary, and the equation (11) re-entry that replaces accumulated log-odds with the free or occupied threshold. `incremental_synthetic` requires a slide that actually inserts global boundaries and an overlap with no mismatches. `incremental_kitti_mini` streams the two-frame fixture; at a 16³ window the slide-out slab is still prior-unknown, so the global map stays empty and the check is the overlap only.
 
 This does not measure Section 8, and it does not claim the paper's memory or speed.

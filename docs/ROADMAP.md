@@ -24,7 +24,7 @@ The average `O(1)` claim is a theorem about binary search over a whole map. It i
 - [x] Probabilistic local occupancy grid and per-ray log-odds updates with the Section 8.2 default probabilities (Section 7.2.1 skeleton).
 - [x] Fixed-size sliding window with a rolling index, slide-out boundary edits, and slide-in fusion (Sections 7.1 and 7.2.2–7.2.3 skeleton).
 - [x] Streaming posed scans through `IncrementalMapper`. CI uses a synthetic scene. A KITTI root is optional and is not downloaded. See `docs/INCREMENTAL.md`.
-- [ ] Refresh global boundaries inside the live window before the next slide. Until then, `globalMap()` can lag there; `query()` reads the local grid, and `mergedBoundaryMap()` is the overlap snapshot.
+- [x] Refresh global boundaries inside the live window before the next slide.
 - [ ] Paper hash packing and projection axes other than `z` (still the open v0.2 items). Those are not required for this skeleton's `z` queries.
 
 ## v0.4: evaluation

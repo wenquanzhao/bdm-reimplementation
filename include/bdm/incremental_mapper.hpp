@@ -40,19 +40,22 @@ struct FrameUpdate {
 // Section 7 skeleton: a sliding log-odds window plus a global BoundaryMap.
 //
 // integrate() follows Algorithm 2's order. The first pose only centers the
-// window. Later poses ray-cast into the current window, then slide if the
+// window. Later poses ray-cast into the current window, refresh global
+// boundaries for voxels whose discrete state changed, then slide if the
 // sensor has moved past slide_threshold_m:
 //   1. New scan ray casting on the local grid (Section 7.2.1).
-//   2. Incremental boundary update of the slide-out region (Section 7.2.2).
-//   3. Load and fuse the slide-in region (Section 7.2.3, equation (11)).
+//   2. Refresh each changed voxel and its 6-neighbors in the global map.
+//   3. Incremental boundary update of the slide-out region (Section 7.2.2).
+//   4. Load and fuse the slide-in region (Section 7.2.3, equation (11)).
 //
 // query() follows Section 7.3. Inside the window it reads the local grid.
 // Outside, it reads the global boundary map along z+ or z- chosen so the
 // search does not step into the window. x± and y± are not implemented.
 //
-// globalMap() is the Algorithm 2 store. It is updated on slides, not on every
-// ray. A cell inside the window can therefore disagree with a boundary entry
-// left behind from an earlier visit, until that cell slides out again.
+// globalMap() is the Algorithm 2 store. A discrete state change inside the
+// window refreshes that cell and its 6-neighbors before any later slide.
+// Slide-out set U and equation (11) are unchanged. Rays that never enter the
+// window stay out of the global map.
 // mergedBoundaryMap() rebuilds a snapshot that is consistent with the local
 // grid on the current window: global entries, with the window and its
 // one-cell shell rewritten from the current states. That snapshot is the
@@ -83,6 +86,7 @@ class IncrementalMapper {
   double distanceFromCenter(const std::array<double, 3>& sensor_m) const;
   State queryGlobalAvoiding(Voxel voxel, Voxel window_origin) const;
   State combinedState(Voxel voxel) const;
+  void refreshLiveBoundaries(const std::unordered_set<Voxel, VoxelHash>& changed_now);
   void slideTo(Voxel new_origin, FrameUpdate& update);
   std::size_t fuseSlideIn(Voxel old_origin, Voxel new_origin);
   std::size_t fuseColumnInterval(int x, int y, int z0, int count, Voxel old_origin);

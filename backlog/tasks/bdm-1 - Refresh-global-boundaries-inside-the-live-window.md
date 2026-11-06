@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@zhongli'
 created_date: '2026-11-06T09:45:00Z'
-updated_date: '2026-11-06T09:59:00Z'
+updated_date: '2026-11-06T10:09:00Z'
 labels: []
 dependencies: []
 references:
@@ -33,16 +33,16 @@ If BDM-5 has already added a gap table, update the live-window row in the same c
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 A case in tests/test_incremental.cpp changes a voxel inside the window without sliding, then globalMap() matches that voxel's local discrete state before any later slide.
-- [ ] #2 testStreamingSlideAndReentry still covers slide-out, slide-in, and equation (11) re-entry (l_free or l_occ, not the accumulated log-odds). The assertions that a non-slide scan must leave global columns unchanged, and that {-3,0,0} stays Occupied in globalMap() until the repair slide, are updated to the new contract.
-- [ ] #3 query() inside the window still reads the local grid. incremental_synthetic still prints incremental_commit: yes and overlap_mismatched: 0. testFreeVolumeRoundTrip still does not store an enclosed free cell as a boundary.
-- [ ] #4 docs/INCREMENTAL.md and the v0.3 checkbox in docs/ROADMAP.md describe the refresh. They no longer say globalMap() lags inside the live window. The binary KITTI grid in docs/KITTI_PIPELINE.md is unchanged.
+- [x] #1 A case in tests/test_incremental.cpp changes a voxel inside the window without sliding, then globalMap() matches that voxel's local discrete state before any later slide.
+- [x] #2 testStreamingSlideAndReentry still covers slide-out, slide-in, and equation (11) re-entry (l_free or l_occ, not the accumulated log-odds). The assertions that a non-slide scan must leave global columns unchanged, and that {-3,0,0} stays Occupied in globalMap() until the repair slide, are updated to the new contract.
+- [x] #3 query() inside the window still reads the local grid. incremental_synthetic still prints incremental_commit: yes and overlap_mismatched: 0. testFreeVolumeRoundTrip still does not store an enclosed free cell as a boundary.
+- [x] #4 docs/INCREMENTAL.md and the v0.3 checkbox in docs/ROADMAP.md describe the refresh. They no longer say globalMap() lags inside the live window. The binary KITTI grid in docs/KITTI_PIPELINE.md is unchanged.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 From the repo root: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j && ctest --test-dir build --output-on-failure
-- [ ] #2 Docs that describe the changed behavior (README.md or docs/) match the code
+- [x] #1 From the repo root: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j && ctest --test-dir build --output-on-failure
+- [x] #2 Docs that describe the changed behavior (README.md or docs/) match the code
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -115,6 +115,19 @@ BDM-5 is still To Do and has not added a gap table. Do not add that table here. 
 - The synthetic sample's `global_boundaries: 12` is likely to change because in-window cells such as `{2,0,0}` are stored before they leave. Update the sample from the command output. Do not change the CLI predicate to preserve 12.
 - Out of scope for the implementation PR: quay, `docs/KITTI_PIPELINE.md`, hash packing, `x±` / `y±`, persisting rays that miss the window (BDM-2), and the BDM-5 gap table.
 <!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+refreshLiveBoundaries runs in IncrementalMapper::integrate after local_.integrate and before the slide test. LocalGrid::integrate takes a fresh changed_now set, which is then unioned into dirty_.
+
+Release ctest from a clean configure: 8/8 passed.
+`cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j && ctest --test-dir build --output-on-failure`
+
+`./build/bdm_incremental --synthetic` printed `incremental_commit: yes`, `overlap_mismatched: 0`, and `global_boundaries: 33`. The sample in docs/INCREMENTAL.md was updated from 12 to 33.
+
+FrameUpdate refresh counts were left off. fuseVoxel is unchanged. docs/KITTI_PIPELINE.md is unchanged. BDM-2 through BDM-5 were not edited.
+<!-- SECTION:NOTES:END -->
 
 ## Comments
 
