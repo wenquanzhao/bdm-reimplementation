@@ -8,8 +8,8 @@
 
 namespace bdm {
 
-// Parameters for the first-version dense grid. This is not the paper's
-// Section 7 log-odds sensor model.
+// Parameters for the binary dense grid. This is not the paper's Section 7
+// log-odds sensor model. That model is LocalGrid / IncrementalMapper.
 struct OccupancyGridParams {
   double resolution_m = 0.5;
   double min_range_m = 1.0;
