@@ -63,7 +63,7 @@ On a boundary set that matches Section 4, the paper's theorem says either direct
 | Search directions `x±` and `y±`, which need a different projection axis. | Not implemented. The map is projected on `z` only. |
 | Theorem for `r_min > 0`: nearest interior boundary ⇒ free; nearest exterior boundary ⇒ unknown. Null search ⇒ unknown. | Behavior follows from Algorithm 1. Not a separate proof artifact. |
 | Average query `O(1)` over a whole map (the binary search cost averaged over cells). | Not measured. One column query here is a hash lookup plus `O(log k)`. |
-| Section 7. Local log-odds grid, ray casting, sliding window, incremental boundary update, region query. | Not implemented. `rebuild` replaces the whole static map. |
+| Section 7. Local log-odds grid, ray casting, sliding window, incremental boundary update, region query. | Skeleton in `IncrementalMapper`. Log-odds ray casting, a fixed rolling window, slide-out boundary edits, and slide-in fusion are implemented. See `docs/INCREMENTAL.md` for the gaps (no other projection axis, no packed hash, global entries inside the window can lag until the next slide). |
 | Sections 8–9. Benchmarks and real-world flights. | Not run. No claim of matching those memory, timing, or accuracy figures. |
 
 ## What the tests cover
@@ -123,8 +123,26 @@ The v0.1 static core, after this fix, does what it claims for a **z-projected** 
 - `query` along `z+` and `z-` follows Algorithm 1;
 - on every scene in `tests/test_boundary_map.cpp`, both directions match the dense grid, and a free region actually produces interior-free entries.
 
-That is the static representation and the static query. It is not a reproduction of the IJRR system. Still absent: the paper's hash and packed entry layout, projection axes other than `z`, any measured average-`O(1)` timing, probabilistic ray casting, the sliding local map, incremental updates, ROS 2, and the Sections 8–9 experiments. Nothing here should be read as matching the paper's memory, speed, or accuracy figures.
+That is the static representation and the static query. It is not a reproduction of the IJRR system. Still absent from the static core: the paper's hash and packed entry layout, projection axes other than `z`, any measured average-`O(1)` timing, ROS 2, and the Sections 8–9 experiments. A Section 7 skeleton is now separate from `rebuild`; what it covers and what it leaves out is in `docs/INCREMENTAL.md`. Nothing here should be read as matching the paper's memory, speed, or accuracy figures.
 
 ## KITTI
 
-`docs/KITTI_PIPELINE.md` is a later step: load KITTI odometry scans into a dense grid and compare `rebuild` / `query` with that grid. The comparison checks this static map. It is not a Section 8 result, and the grid is not the Section 7 log-odds model.
+`docs/KITTI_PIPELINE.md` loads KITTI odometry scans into a dense binary grid and compares `rebuild` / `query` with that grid. The comparison checks this static map. It is not a Section 8 result, and that grid is not the Section 7 log-odds model. The log-odds path is `docs/INCREMENTAL.md`.
+
+## Section 7 skeleton
+
+`IncrementalMapper` is a later step than the static core checked above. It is not part of the historical run that produced the 1/1 `boundary_map` result. The local check for this step, from a clean configure, is:
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++
+cmake --build build -j
+ctest --test-dir build --output-on-failure
+```
+
+`g++` 13.3.0, CMake 3.28.3. Result: 8/8 tests passed (`boundary_map`, `kitti_grid`, `kitti_fixture`, `kitti_help`, `incremental_map`, `incremental_synthetic`, `incremental_help`, `incremental_kitti_mini`).
+
+The same sources with `-Wall -Wextra -Wpedantic -Werror -fsanitize=address,undefined` also passed those 8 tests. No ASan or UBSan report was printed.
+
+`incremental_map` streams synthetic scans, slides the window, and checks the overlap of `mergedBoundaryMap` against the local grid in both `z` directions. It also checks slid-out cells against a second mapper whose window never slides, including an enclosed free cell that is not stored as a boundary, and the equation (11) re-entry that replaces accumulated log-odds with the free or occupied threshold. `incremental_synthetic` requires a slide that actually inserts global boundaries. `incremental_kitti_mini` streams the two-frame fixture; at a 16³ window the slide-out slab is still prior-unknown, so the global map stays empty and the check is the overlap only.
+
+This does not measure Section 8, and it does not claim the paper's memory or speed.

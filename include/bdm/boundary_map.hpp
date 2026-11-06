@@ -41,10 +41,17 @@ struct Entry { int z; Boundary boundary; };
 // query(v) is Algorithm 1 with search direction z+.
 // query(v, direction) selects z+ or z-.
 // Column lookup is a hash plus a binary search, O(log k) in the column length.
-// This is not the global-local updater, ray caster, or paper benchmark stack.
+// rebuild() replaces the whole map from a dense grid.
+// eraseAt() / insertAt() edit one voxel and keep that column sorted by z.
+// IncrementalMapper uses those edits on slide-out. They are not the paper's
+// packed hash table, and they do not by themselves implement Section 7.
 class BoundaryMap {
 public:
   void rebuild(const VoxelGrid& voxels);
+  // Removes the entry at this voxel if one is stored. Drops an empty column.
+  void eraseAt(const Voxel& voxel);
+  // Inserts or replaces the entry at this voxel. The column stays sorted by z.
+  void insertAt(const Voxel& voxel, Boundary boundary);
   State query(const Voxel& voxel) const;
   State query(const Voxel& voxel, SearchDirection direction) const;
   std::size_t boundaryCount() const noexcept;

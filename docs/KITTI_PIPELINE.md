@@ -1,8 +1,8 @@
 # KITTI odometry to a dense grid, then BoundaryMap
 
-This is the first dataset hook in front of the static boundary map. It loads public KITTI odometry LiDAR and poses, paints a dense Free / Occupied / Unknown grid, calls `BoundaryMap::rebuild`, and checks `query` along `z+` and `z-` against that grid.
+This is the dataset hook in front of the static boundary map. It loads public KITTI odometry LiDAR and poses, paints a dense Free / Occupied / Unknown grid, calls `BoundaryMap::rebuild`, and checks `query` along `z+` and `z-` against that grid.
 
-It is not the paper's Section 7 log-odds mapper (no odds, no clamping, no sliding window, no incremental boundary update). It is not a Section 8 experiment: there is no OctoMap comparison, no memory or timing table from the paper, and no accuracy claim against those figures. A match here means the static map agrees with the grid it was just built from.
+It is not the paper's Section 7 log-odds mapper. There is no odds update, no clamping, no sliding window, and no incremental boundary edit on this path. The log-odds skeleton is `docs/INCREMENTAL.md` (`bdm_incremental`). This page is not a Section 8 experiment: there is no OctoMap comparison, no memory or timing table from the paper, and no accuracy claim against those figures. A match here means the static map agrees with the binary grid it was just built from.
 
 The KITTI scans are not in this repository. CI runs a synthetic fixture in the same file layout. A short real clip is downloaded separately.
 

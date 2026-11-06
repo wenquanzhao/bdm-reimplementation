@@ -93,6 +93,28 @@ void BoundaryMap::rebuild(const VoxelGrid& voxels) {
     });
   }
 }
+void BoundaryMap::eraseAt(const Voxel& voxel) {
+  auto it = columns_.find({voxel.x, voxel.y});
+  if (it == columns_.end()) return;
+  auto& entries = it->second;
+  auto pos = std::lower_bound(entries.begin(), entries.end(), voxel.z,
+      [](const Entry& entry, int z) { return entry.z < z; });
+  if (pos == entries.end() || pos->z != voxel.z) return;
+  entries.erase(pos);
+  --count_;
+  if (entries.empty()) columns_.erase(it);
+}
+void BoundaryMap::insertAt(const Voxel& voxel, Boundary boundary) {
+  auto& entries = columns_[{voxel.x, voxel.y}];
+  auto pos = std::lower_bound(entries.begin(), entries.end(), voxel.z,
+      [](const Entry& entry, int z) { return entry.z < z; });
+  if (pos != entries.end() && pos->z == voxel.z) {
+    pos->boundary = boundary;
+    return;
+  }
+  entries.insert(pos, Entry{voxel.z, boundary});
+  ++count_;
+}
 State BoundaryMap::query(const Voxel& v) const {
   return query(v, SearchDirection::PositiveZ);
 }
