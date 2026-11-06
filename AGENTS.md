@@ -23,14 +23,17 @@ Do not edit Backlog task, draft, document, decision, or milestone markdown files
 </CRITICAL_INSTRUCTION>
 <!-- BACKLOG.MD GUIDELINES END -->
 
-## BDM agent loop
+## 合议敏捷
 
-Read `docs/agent-workflow.md` before implementing a task. Backlog.md is the board. Do not install or wire quay.
+Working title; Mike may rename it. Read `docs/agent-workflow.md` before implementing a task.
+
+合议敏捷 is a reusable multi-bot loop: Ding leads, a coding bot implements, a review bot reviews, and Backlog.md is the board. Do not install or wire quay. One task, one pull request. `bdm-reimplementation` is the first trial repo. Tasks in `backlog/` (prefix `BDM`) are this repo's project work, not the name of the workflow.
 
 - Columns, exact names: To Do, Ready, In Progress, In Review, Needs Human, Done.
-- Ding (or a human) moves work To Do → Ready. 钟离 implements one Ready task per PR. yale reviews In Review. Mike handles only Needs Human.
+- Ding (or a human) moves work To Do → Ready. The coding bot implements one Ready task per PR. The review bot handles In Review. Mike handles only Needs Human.
+- On this trial, the coding bot is 钟离 and the review bot is yale. Another repo keeps the same roles and swaps the bots.
 - Leave new tasks in To Do. Do not promote your own task to Ready.
-- Definition of Done includes this command from the repo root. `.github/workflows/ci.yml` runs the same `ctest --test-dir build --output-on-failure` under g++ and clang++, Debug and Release.
+- This trial's Definition of Done runs the command below from the repo root. `.github/workflows/ci.yml` runs the same `ctest --test-dir build --output-on-failure` under g++ and clang++, Debug and Release. Other repos put their own test command in their Backlog Definition of Done.
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
