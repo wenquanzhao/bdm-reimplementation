@@ -113,7 +113,7 @@ Clang 18 ASan was not run: the link failed because `libclang_rt.asan-x86_64.a` (
 
 Release and the g++ sanitizer build emitted no compiler diagnostics under `-Wall -Wextra -Wpedantic`.
 
-GitHub Actions (`.github/workflows/ci.yml`: `g++` and `clang++`, Debug and Release) is not part of the numbers above. Those jobs run on the pull request; this file does not claim a result for them.
+GitHub Actions on `ubuntu-24.04` (`.github/workflows/ci.yml`) passed for commit `6bbf07d`: `g++` and `clang++`, each in Debug and Release, on both the push run and the pull-request run. The test step is `ctest --test-dir build --output-on-failure`. Status was read with `gh pr checks 1`. Pull-request run: https://github.com/wenquanzhao/bdm-reimplementation/actions/runs/42176201952. The job logs were not copied into this note; the claim is the check status, not a pasted CI transcript.
 
 ## Verdict
 
