@@ -9,10 +9,10 @@ Independent C++17 implementation inspired by *Memory-Efficient Boundary Map for 
 
 ## Implemented
 
-- Explicit occupied voxels and six-connected interior-free / exterior-unknown boundaries.
-- Sparse (x,y) hash columns with sorted (z,boundary type) entries.
-- Positive/negative Z occupancy queries using binary search.
-- Tests for a free cube with an obstacle, disconnected intervals, occupied-only and empty maps.
+- Occupied voxels, interior-free voxels (free with a 6-neighbor that is unknown or occupied), and exterior-unknown voxels (unknown with a free 6-neighbor), including unknown cells left out of the input.
+- Sparse `(x, y)` columns in `std::unordered_map`, each a `(z, boundary type)` array sorted by `z`. This is not the paper's `(1441·x + y) mod Q` table or 32-bit packed entries.
+- Queries along `z+` and `z-` by binary search, using Algorithm 1: nearest interior-free boundary means free; occupied is returned only when that nearest boundary is the query cell; otherwise the result is unknown.
+- CTest coverage for a free volume with an obstacle, unstored interior free cells, disconnected free regions, occupied-only and empty maps, explicit unknown cells, negative indices, and dense-grid checks on small random scenes. Details and limits are in `docs/VERIFICATION.md`.
 
 ## Build and test
 
@@ -24,6 +24,6 @@ ctest --test-dir build --output-on-failure
 
 ## Scope and limitations
 
-This is **static reconstruction** from an existing occupancy grid, not the complete IJRR algorithm. It does not implement probabilistic ray casting, sliding local grid, incremental global-local updates, O(1) optimized query, ROS2 integration or paper-scale benchmarks. Column query is O(log k).
+This is **static reconstruction** from an existing occupancy grid, not the complete IJRR system. It does not implement probabilistic ray casting, the sliding local grid, incremental global-local updates, projection axes other than `z`, ROS 2, or the paper's experiments. A column query is a hash lookup plus a binary search, `O(log k)` in the number of boundaries in that column. The paper's average `O(1)` result is not re-measured here.
 
-This is an independent implementation; the authors' repository currently says source release is pending. See docs/ROADMAP.md.
+This is an independent implementation. The upstream repository currently says source release is pending. See `docs/ROADMAP.md` and `docs/VERIFICATION.md`.

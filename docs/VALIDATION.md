@@ -15,6 +15,8 @@ Independent static prototype, not the complete BDM algorithm.
 - Sanitizers and GCC/Clang CI.
 - Performance measurement with resident memory, throughput, and update time.
 
+## Checked by ctest
+The invariants above, both `z` search directions, interior-free presence after a free-region rebuild, and agreement with the dense grid on the scenes in `tests/test_boundary_map.cpp`. See `docs/VERIFICATION.md` for the paper comparison and the latest local result.
+
 ## Missing
-Paper-accurate O(1) query, probabilistic ray casting, sliding local grid,
-incremental global-local update, ROS2, large-scale benchmarks.
+The paper's hash and packed-entry layout, projection axes other than `z`, measured average-`O(1)` query timings, probabilistic ray casting, sliding local grid, incremental global-local update, ROS 2, large-scale benchmarks.
