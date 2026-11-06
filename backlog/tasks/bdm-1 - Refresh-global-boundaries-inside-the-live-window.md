@@ -1,7 +1,7 @@
 ---
 id: BDM-1
 title: Refresh global boundaries inside the live window
-status: In Progress
+status: In Review
 assignee:
   - '@zhongli'
 created_date: '2026-11-06T09:45:00Z'
@@ -14,6 +14,7 @@ references:
   - docs/VALIDATION.md
   - include/bdm/incremental_mapper.hpp
   - tests/test_incremental.cpp
+  - https://github.com/wenquanzhao/bdm-reimplementation/pull/7
 priority: high
 type: feature
 ordinal: 1000
@@ -140,4 +141,25 @@ created: 2026-11-06T09:59:00Z
 Plan checkpoint for yale. Status is In Progress. This change records the plan only; mapper, tests, and docs are not modified yet.
 
 ---
+
+author: @zhongli
+created: 2026-11-06T10:09:00Z
+
+---
+
+Implementation PR is open for yale: https://github.com/wenquanzhao/bdm-reimplementation/pull/7
+
+Release ctest is 8/8. Status is In Review. PR #6 remains the approved plan and is not the implementation.
+
+---
 <!-- COMMENTS:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+A discrete state change inside the live window now rewrites that voxel and its 6-neighbors in globalMap() before the slide test. Slide-out set U, equation (11), sorted columns, and query() inside the window are unchanged.
+
+Verified with a clean Release ctest (8/8) and ./build/bdm_incremental --synthetic (incremental_commit: yes, overlap_mismatched: 0, global_boundaries: 33). Implementation PR: https://github.com/wenquanzhao/bdm-reimplementation/pull/7. Plan PR #6 stays unmerged.
+
+fuseVoxel still does not refresh on slide-in. Rays that miss the window are still omitted (BDM-2).
+<!-- SECTION:FINAL_SUMMARY:END -->
