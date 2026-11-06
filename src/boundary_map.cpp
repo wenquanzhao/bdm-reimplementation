@@ -11,7 +11,7 @@ std::size_t mix(std::size_t h, std::uint32_t v) noexcept {
 constexpr std::array<Voxel, 6> kNeighbors{{
     {1,0,0},{-1,0,0},{0,1,0},{0,-1,0},{0,0,1},{0,0,-1}
 }};
-State lookup(const std::unordered_map<Voxel, State, VoxelHash>& grid, Voxel v) {
+State lookup(const VoxelGrid& grid, Voxel v) {
   auto it = grid.find(v);
   return it == grid.end() ? State::Unknown : it->second;
 }
@@ -51,7 +51,7 @@ std::size_t ColumnHash::operator()(const Column& v) const noexcept {
   h = mix(h, static_cast<std::uint32_t>(v.x));
   return mix(h, static_cast<std::uint32_t>(v.y));
 }
-void BoundaryMap::rebuild(const std::unordered_map<Voxel, State, VoxelHash>& voxels) {
+void BoundaryMap::rebuild(const VoxelGrid& voxels) {
   columns_.clear();
   count_ = 0;
   for (const auto& [v, state] : voxels) {

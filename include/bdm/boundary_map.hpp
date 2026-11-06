@@ -21,6 +21,7 @@ struct Voxel {
 struct VoxelHash {
   std::size_t operator()(const Voxel& v) const noexcept;
 };
+using VoxelGrid = std::unordered_map<Voxel, State, VoxelHash>;
 struct Column {
   int x{}, y{};
   bool operator==(const Column& rhs) const noexcept { return x == rhs.x && y == rhs.y; }
@@ -43,7 +44,7 @@ struct Entry { int z; Boundary boundary; };
 // This is not the global-local updater, ray caster, or paper benchmark stack.
 class BoundaryMap {
 public:
-  void rebuild(const std::unordered_map<Voxel, State, VoxelHash>& voxels);
+  void rebuild(const VoxelGrid& voxels);
   State query(const Voxel& voxel) const;
   State query(const Voxel& voxel, SearchDirection direction) const;
   std::size_t boundaryCount() const noexcept;
